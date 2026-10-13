@@ -1,6 +1,6 @@
 """测试确认逻辑：按行审批 / 一次性审批
 
-- 按行：默认回车删除、未找到仅需知悉、跳过与全部删除
+- 按行：默认回车删除、未找到仅需知悉、跳过与退出
 - 一次性：一次列出全部信息，默认不删除，显式 y 才删除存在的文件
 """
 
@@ -59,18 +59,6 @@ def test_row_skip_with_n(tmp_path, monkeypatch):
 
     assert confirmed == []
     assert not_found == []
-
-
-def test_row_delete_all_with_a(tmp_path, monkeypatch):
-    _setup_logger(tmp_path)
-    monkeypatch.setattr(cli.os.path, "isfile", lambda p: True)
-    _answers(monkeypatch, "", "a")
-
-    confirmed, not_found = cli._confirm_entries(
-        _entries("/a.exe", "/b.exe", "/c.exe"))
-    get_logger().close()
-
-    assert confirmed == ["/a.exe", "/b.exe", "/c.exe"]
 
 
 def test_row_quit_with_q(tmp_path, monkeypatch):

@@ -70,7 +70,6 @@ def _confirm_entries_by_row(entries):
     """
     confirmed = []
     not_found = []
-    delete_all = False
     total = len(entries)
 
     log()
@@ -87,20 +86,10 @@ def _confirm_entries_by_row(entries):
             not_found.append(e)
             continue
 
-        if delete_all:
-            log("  已按 [a] 全部删除，自动确认删除")
-            confirmed.append(e["file"])
-            continue
-
-        ans = ask("  是否删除? [Y/n]（a=全部删除, q=退出确认）: ").strip().lower()
+        ans = ask("  是否删除? [Y/n]（q=退出确认）: ").strip().lower()
         if ans == "q":
             log("  已退出确认流程，保留此前的确认结果。")
             break
-        if ans == "a":
-            delete_all = True
-            confirmed.append(e["file"])
-            log("  已选择全部删除，后续存在的文件将自动确认。")
-            continue
         if ans in ("", "y", "yes"):
             confirmed.append(e["file"])
             log("  → 确认删除")
@@ -143,7 +132,7 @@ def _confirm_entries_bulk(entries):
         log("  没有本机存在的文件，全部归入“需手动确认”，不生成删除命令。")
         return [], not_found
 
-    ans = ask(f"  确认删除以上存在的 {len(existing)} 个文件? [y/N]: ").strip().lower()
+    ans = ask(f"  确认删除以上存在的 {len(existing)} 个文件? [N/y]: ").strip().lower()
     if ans in ("y", "yes"):
         confirmed = [e["file"] for e in existing]
         log(f"  → 已确认删除 {len(confirmed)} 个文件")
@@ -154,9 +143,9 @@ def _confirm_entries_bulk(entries):
     return confirmed, not_found
 
 
-def _run(log_path):
+def _run(run_dir, host):
     print_header("360 杀毒报表 - 染毒文件清理工具")
-    log(f"  日志文件: {log_path}")
+    log(f"  本次输出目录: {run_dir}")
     log("  （本流程不刷新界面，可上滚查看历史信息）")
 
     print_step("步骤 1/6: 选择 360 杀毒导出的报表文件")
@@ -166,7 +155,8 @@ def _run(log_path):
         return
 
     print_step("步骤 2/6: 转换报表为 CSV")
-    csv_path = convert_report_to_csv(report_path)
+    base = os.path.splitext(os.path.basename(report_path))[0]
+    csv_path = convert_report_to_csv(report_path, os.path.join(run_dir, base + ".csv"))
     log(f"  已生成 CSV: {csv_path}")
 
     headers, rows = read_csv_rows(csv_path)
@@ -192,7 +182,6 @@ def _run(log_path):
     type_col = find_column(headers, TYPE_COLUMNS)
 
     print_step("步骤 3/6: 识别当前电脑所属终端")
-    host = get_current_hostname()
     log(f"  当前主机名 (hostname): {host}")
 
     terminals = list_terminals(headers, rows, terminal_col)
@@ -231,14 +220,14 @@ def _run(log_path):
     if not commands:
         log("  没有需要执行的删除命令，程序结束。")
     else:
-        cmd_file = write_command_file(commands, PROJECT_ROOT, host)
+        cmd_file = write_command_file(commands, run_dir, host)
         log(f"\n  生成的删除命令（共 {len(commands)} 条）:")
         for cmd in commands:
             log(f"    {cmd}")
         log(f"\n  命令已保存到: {cmd_file}")
 
         ans = ask(
-            f"\n  确认执行以上 {len(commands)} 条删除命令? (y/n): "
+            f"\n  确认执行以上 {len(commands)} 条删除命令? [N/y]: "
         ).strip().lower()
         if ans in ("y", "yes"):
             log("\n  开始执行删除...")
@@ -264,16 +253,24 @@ def _run(log_path):
     log("\n流程结束。")
 
 
+def _make_run_dir(timestamp):
+    """创建本次运行的独立输出目录 <项目根>/tmp/<timestamp>，返回其路径。"""
+    run_dir = os.path.join(PROJECT_ROOT, "tmp", timestamp)
+    os.makedirs(run_dir, exist_ok=True)
+    return run_dir
+
+
 def main():
     host = get_current_hostname()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = os.path.join(PROJECT_ROOT, f"interaction_{host}_{timestamp}.log")
+    run_dir = _make_run_dir(timestamp)
+    log_path = os.path.join(run_dir, f"interaction_{host}_{timestamp}.log")
 
     logger = SessionLogger(log_path)
     set_logger(logger)
     try:
         logger.write(f"# 会话开始: {timestamp}  主机: {host}")
-        _run(log_path)
+        _run(run_dir, host)
     except KeyboardInterrupt:
         logger.write("\n# 用户中断，程序退出。")
     finally:

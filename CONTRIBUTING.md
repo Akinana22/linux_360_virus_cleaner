@@ -55,7 +55,7 @@ v1.0.0: 360 杀毒报表染毒文件清理工具
 
 - 遵循现有代码风格，优先复用现有模块与工具函数。
 - 新增逻辑需配套单元测试（`tests/`，pytest）。
-- 不要提交运行时产物：`_lib/`、`*.csv`、`delete_commands_*.txt`、`interaction_*.log`、`*.xlsx`、`*.xls`（已在 `.gitignore` 中忽略）。
+- 不要提交运行时产物：`_lib/`、`tmp/`、`*.csv`、`delete_commands_*.txt`、`interaction_*.log`、`*.xlsx`、`*.xls`（已在 `.gitignore` 中忽略）。
 
 ---
 

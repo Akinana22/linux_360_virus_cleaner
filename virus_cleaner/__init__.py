@@ -22,4 +22,4 @@ __all__ = [
     "build_delete_commands",
     "write_command_file",
 ]
-__version__ = "1.0.0"
+__version__ = "1.1.0"

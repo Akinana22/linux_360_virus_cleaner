@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package user-facing files
+        run: |
+          zip -r linux-360-virus-cleaner-v${{ steps.ver.outputs.version }}.zip \
+            run.py \
+            wheels/ \
+            virus_cleaner/ \
+            LICENSE \
+            README.md \
+            -x "*__pycache__*" "*.pytest_cache*" "virus_cleaner/__pycache__*"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          files: linux-360-virus-cleaner-v${{ steps.ver.outputs.version }}.zip
+          generate_release_notes: true
